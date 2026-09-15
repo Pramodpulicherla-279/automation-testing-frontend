@@ -6,6 +6,7 @@ import { Play, Terminal, Activity, CheckCircle, Circle, AlertCircle, /* Cpu, */ 
 import UIScreenshotIssues from '../UIScreenshotIssues/UIScreenshotIssues';
 import IssuePanel from '../IssuePanel/IssuePanel';
 import NetworkConfigPanel from '../NetworkConfig/NetworkConfig'
+import RunnerStatus from '../RunnerStatus/RunnerStatus';
 import catalogService from '../../services/catalogService';
 import testCaseService from '../../services/testCaseService';
 import { API_BASE_URL, WS_TEST_STATUS_URL } from '../../api/config';
@@ -932,6 +933,8 @@ function TestScreen({ onHistoryUpdate }) {
 
                 {/* ── LEFT PANEL: Appium controls + Module Flow + Network Config ── */}
                 <div className="dashboard-left-panel">
+
+                    <RunnerStatus />
 
                     {/* Controls card */}
                     <div className="dashboard-card">
