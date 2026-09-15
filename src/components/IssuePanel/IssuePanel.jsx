@@ -454,7 +454,10 @@ function RunGroup({ ticketId, issues, openChildren, onToggleChild, onRemoveIssue
 }
 
 /* ─── IssuePanel ─────────────────────────────────────────────────────────── */
-export default function IssuePanel({ modules = [], jiraIssues = [], onHistoryUpdate = null }) {
+export default function IssuePanel({ modules = [], jiraIssues = [], onHistoryUpdate = null, runId = null }) {
+  // Laptops share one live feed; only this screen's run belongs here.
+  const runIdRef = useRef(runId);
+  runIdRef.current = runId;
   const [issues,       setIssues]      = useState(() => ssLoad() || []);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [wsConnected,  setWsConnected]  = useState(false);
@@ -506,6 +509,7 @@ export default function IssuePanel({ modules = [], jiraIssues = [], onHistoryUpd
         ws.onmessage = (evt) => {
           try {
             const msg = JSON.parse(evt.data);
+            if (msg.run_id && msg.run_id !== runIdRef.current) return;
             if (msg.type === "RUN_START") {
               importedKeys.current = new Set();
               setIssues([]); ssClear();

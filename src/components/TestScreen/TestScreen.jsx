@@ -6,7 +6,7 @@ import { Play, Terminal, Activity, CheckCircle, Circle, AlertCircle, /* Cpu, */ 
 import UIScreenshotIssues from '../UIScreenshotIssues/UIScreenshotIssues';
 import IssuePanel from '../IssuePanel/IssuePanel';
 import NetworkConfigPanel from '../NetworkConfig/NetworkConfig'
-import RunnerStatus from '../RunnerStatus/RunnerStatus';
+import RunnerPicker from '../RunnerPicker/RunnerPicker';
 import catalogService from '../../services/catalogService';
 import testCaseService from '../../services/testCaseService';
 import { API_BASE_URL, WS_TEST_STATUS_URL } from '../../api/config';
@@ -514,6 +514,17 @@ function TestScreen({ onHistoryUpdate }) {
     const [apkUrl, setApkUrl] = useState(() => loadState('apkUrl', ''));
     // Shared so the Sidebar, which renders outside this screen, can lock navigation.
     const { isRunning, setIsRunning } = useTestRun();
+    // Which laptop runs the tests; remembered per browser.
+    const [selectedRunner, setSelectedRunner] = useState(() => {
+        try { return localStorage.getItem('selectedRunner') || ''; } catch { return ''; }
+    });
+    const runnerRef = useRef(selectedRunner);
+    runnerRef.current = selectedRunner;
+    const runnerQuery = () => (runnerRef.current ? `?runner=${encodeURIComponent(runnerRef.current)}` : '');
+    // The run this screen started. Laptops share one live feed; other runs are ignored.
+    const [currentRunId, setCurrentRunId] = useState(() => loadState('currentRunId', null));
+    const currentRunIdRef = useRef(currentRunId);
+    currentRunIdRef.current = currentRunId;
     const [isDownloading, setIsDownloading] = useState(false);
     const [showUiIssuesScreen, setShowUiIssuesScreen] = useState(false);
     const [uiAnalysisStatus, setUiAnalysisStatus] = useState('idle');
@@ -633,6 +644,7 @@ function TestScreen({ onHistoryUpdate }) {
     });
 
     const handleIncomingData = (data) => {
+        if (data.run_id && data.run_id !== currentRunIdRef.current) return;
         // IssuePanel handles JIRA_PAYLOAD via its own WebSocket — skip here
         if (data.type === 'JIRA_PAYLOAD') return;
 
@@ -681,6 +693,7 @@ function TestScreen({ onHistoryUpdate }) {
     };
 
     const handleRunTest = async () => {
+        if (!selectedRunner) { alert("Choose the laptop to run on in the Test runner card."); return; }
         if (appiumStatus !== 'running') { alert("Appium Server is not running. Start it first."); return; }
         if (!apkUrl && !selectedApk) { alert("Please enter a Google Drive URL or select an existing APK!"); return; }
         if (!resolvedConfig) { alert("No test config registered for this application (check its variant in Apps & Modules)."); return; }
@@ -708,6 +721,9 @@ function TestScreen({ onHistoryUpdate }) {
 
         try {
             const runId = crypto.randomUUID();
+            currentRunIdRef.current = runId;
+            setCurrentRunId(runId);
+            sessionStorage.setItem('currentRunId', JSON.stringify(runId));
 
             // Save network config against this run_id BEFORE starting tests
             // if (networkConfig?.enabled) {
@@ -740,6 +756,7 @@ function TestScreen({ onHistoryUpdate }) {
                 tests_to_run: testsToRun,
                 app_type: resolvedConfig.id,
                 run_id: runId,
+                runner_id: selectedRunner,
                 login_phone: loginPhone.trim() || null,
                 login_mpin: loginMpin.trim() || null,
                 // Config is the single source of truth: the selected test types already
@@ -776,7 +793,7 @@ function TestScreen({ onHistoryUpdate }) {
 
     const handleStopTest = async () => {
         try { 
-            await fetch(`${API_URL}/test/stop-test`, { 
+            await fetch(`${API_URL}/test/stop-test${runnerQuery()}`, { 
                 method: 'POST' 
             });
          } catch { }
@@ -790,7 +807,7 @@ function TestScreen({ onHistoryUpdate }) {
 
     const handleGenerateReport = async () => {
         setShowStopPopup(false);
-        try { await fetch(`${API_URL}/test/generate-report`, { method: 'POST' }); } catch { }
+        try { await fetch(`${API_URL}/test/generate-report${runnerQuery()}`, { method: 'POST' }); } catch { }
         handleIncomingData({ type: 'LOG', payload: { message: 'Generating partial report...', status: 'INFO' } });
     };
     const handleReset = async () => {
@@ -847,13 +864,13 @@ function TestScreen({ onHistoryUpdate }) {
     };
 
     const checkAppiumStatus = async () => {
-        try { const r = await fetch(`${API_URL}/test/appium/status`); setAppiumStatus((await r.json()).status); }
+        try { const r = await fetch(`${API_URL}/test/appium/status${runnerQuery()}`); setAppiumStatus((await r.json()).status); }
         catch { setAppiumStatus('stopped'); }
     };
 
     const toggleAppium = async () => {
         try {
-            await fetch(`${API_URL}/test/appium/${appiumStatus === 'running' ? 'stop' : 'start'}`, { method: 'POST' });
+            await fetch(`${API_URL}/test/appium/${appiumStatus === 'running' ? 'stop' : 'start'}${runnerQuery()}`, { method: 'POST' });
             setLogs(prev => [
                 ...prev,
                 {
@@ -868,11 +885,11 @@ function TestScreen({ onHistoryUpdate }) {
 
     useEffect(() => {
         const checkDevice = async () => {
-            try { const r = await fetch(`${API_URL}/test/device-status`); setIsDeviceConnected(!!(await r.json()).connected); }
+            try { const r = await fetch(`${API_URL}/test/device-status${runnerQuery()}`); setIsDeviceConnected(!!(await r.json()).connected); }
             catch { setIsDeviceConnected(false); }
         };
         const loadApks = async () => {
-            try { const r = await fetch(`${API_URL}/test/apk-list`); setExistingApks((await r.json()).apks || []); } catch { }
+            try { const r = await fetch(`${API_URL}/test/apk-list${runnerQuery()}`); setExistingApks((await r.json()).apks || []); } catch { }
         };
         loadApks(); checkDevice(); checkAppiumStatus();
         // Clear stale jiraIssues from old version (IssuePanel now manages its own)
@@ -880,6 +897,15 @@ function TestScreen({ onHistoryUpdate }) {
         const id = setInterval(() => { checkDevice(); checkAppiumStatus(); }, 5000);
         return () => clearInterval(id);
     }, []);
+
+    // Each laptop has its own phone, Appium and APKs.
+    useEffect(() => {
+        try { localStorage.setItem('selectedRunner', selectedRunner); } catch { /* ignore */ }
+        fetch(`${API_URL}/test/apk-list${runnerQuery()}`)
+            .then((r) => r.json()).then((d) => setExistingApks(d.apks || [])).catch(() => { });
+        checkAppiumStatus();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedRunner]);
 
     /* ── Render ─────────────────────────────────────────────────────────────── */
     return (
@@ -934,7 +960,7 @@ function TestScreen({ onHistoryUpdate }) {
                 {/* ── LEFT PANEL: Appium controls + Module Flow + Network Config ── */}
                 <div className="dashboard-left-panel">
 
-                    <RunnerStatus />
+                    <RunnerPicker value={selectedRunner} onChange={setSelectedRunner} disabled={isRunning} />
 
                     {/* Controls card */}
                     <div className="dashboard-card">
@@ -1072,6 +1098,7 @@ function TestScreen({ onHistoryUpdate }) {
                         <IssuePanel
                             modules={modules}
                             onHistoryUpdate={onHistoryUpdate}
+                            runId={currentRunId}
                         />
                     </div>
                 </div>{/* /dashboard-right-panel */}
