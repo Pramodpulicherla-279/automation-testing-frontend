@@ -53,7 +53,10 @@ const APP_TEST_CONFIG = {
         test_type: {
             "Smoke":      { Login: COMMON_LOGIN },
             "Regression": { Login: COMMON_LOGIN },
-            "End-to-End": { Login: COMMON_LOGIN },
+            "End-to-End": { 
+                Login: COMMON_LOGIN, 
+                Onboarding: "tests/test_suites/end_to_end/regular_farmer/test_onboarding_pytest.py" 
+            },
             "Sanity":     { Login: COMMON_LOGIN },
         },
     },
@@ -65,7 +68,7 @@ const APP_TEST_CONFIG = {
             "Regression": { Login: COMMON_LOGIN },
             "End-to-End": { 
                 Login: COMMON_LOGIN, 
-                Onboarding: "tests/test_suites/end_to_end/state_client/test_onboarding_pytest.py" 
+                Onboarding: "tests/test_suites/end_to_end/regular_client/test_onboarding_pytest.py" 
             },
             "Sanity":     { Login: COMMON_LOGIN },
         },
@@ -76,7 +79,10 @@ const APP_TEST_CONFIG = {
         test_type: {
             "Smoke":      { Login: COMMON_LOGIN },
             "Regression": { Login: COMMON_LOGIN },
-            "End-to-End": { Login: COMMON_LOGIN },
+            "End-to-End": { 
+                Login: COMMON_LOGIN,
+                Onboarding: "tests/test_suites/end_to_end/state_farmer/test_onboarding_pytest.py" 
+            },
             "Sanity":     { Login: COMMON_LOGIN },
         },
     },
