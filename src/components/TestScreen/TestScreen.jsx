@@ -69,7 +69,8 @@ const APP_TEST_CONFIG = {
             "Regression": { Login: COMMON_LOGIN },
             "End-to-End": { 
                 Login: COMMON_LOGIN, 
-                Onboarding: "tests/test_suites/end_to_end/regular_client/test_onboarding_pytest.py" 
+                Onboarding: "tests/test_suites/end_to_end/regular_client/test_onboarding_pytest.py",
+                FieldUpdates: "tests/test_suites/end_to_end/regular_client/test_field_updates_pytest.py" 
             },
             "Sanity":     { Login: COMMON_LOGIN },
         },
