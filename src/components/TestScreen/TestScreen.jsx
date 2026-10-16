@@ -57,7 +57,8 @@ const APP_TEST_CONFIG = {
                 Login: COMMON_LOGIN, 
                 Onboarding: "tests/test_suites/end_to_end/regular_farmer/test_onboarding_pytest.py",
                 CropHealth: "tests/test_suites/end_to_end/regular_farmer/test_crophealth_pytest.py",
-                FarmerUpdates: "tests/test_suites/end_to_end/regular_farmer/test_farmer_updates_pytest.py"
+                FarmerUpdates: "tests/test_suites/end_to_end/regular_farmer/test_farmer_updates_pytest.py",
+                DiagnosisUpdates: "tests/test_suites/end_to_end/regular_farmer/test_diagnosis_updates_pytest.py"
             },
             "Sanity":     { Login: COMMON_LOGIN },
         },
